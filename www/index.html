@@ -1,0 +1,150 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover, user-scalable=no">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="format-detection" content="telephone=no">
+  <title>Überstundenrechner</title>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <div class="container">
+    <header>
+      <div class="header-top">
+        <h1>Zeiterfassung</h1>
+        <button id="toggleSettings" class="settings-btn" title="Einstellungen">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <circle cx="12" cy="12" r="3"></circle>
+            <path d="M12 1v2M12 21v2M4.22 4.22l1.42 1.42M18.36 18.36l1.42 1.42M1 12h2M21 12h2M4.22 19.78l1.42-1.42M18.36 5.64l1.42-1.42"></path>
+          </svg>
+        </button>
+      </div>
+      <div class="balance-display">
+        <span class="balance-label">Gesamtsaldo</span>
+        <span id="totalBalance" class="balance-value">0:00</span>
+      </div>
+    </header>
+
+    <div id="settingsPanel" class="settings-panel hidden">
+      <h3>Einstellungen</h3>
+      <div class="settings-group">
+        <label>Tägliche Soll-Arbeitszeit</label>
+        <div class="time-input-group">
+          <input type="number" id="targetHours" min="0" max="23" value="8" class="time-input" inputmode="numeric">
+          <span>Std.</span>
+          <input type="number" id="targetMinutes" min="0" max="59" value="0" class="time-input" inputmode="numeric">
+          <span>Min.</span>
+        </div>
+      </div>
+      <div class="settings-group">
+        <label>Pausendauer</label>
+        <div class="time-input-group">
+          <input type="number" id="breakHours" min="0" max="23" value="1" class="time-input" inputmode="numeric">
+          <span>Std.</span>
+          <input type="number" id="breakMins" min="0" max="59" value="0" class="time-input" inputmode="numeric">
+          <span>Min.</span>
+        </div>
+      </div>
+      <button id="saveSettings" class="btn btn-primary">Speichern</button>
+    </div>
+
+    <section class="timer-section">
+      <div class="current-datetime">
+        <div class="current-date" id="currentDate">--. --. ----</div>
+        <div class="current-time" id="currentTime">--:--:--</div>
+      </div>
+
+      <div class="timer-display" id="timerDisplay">
+        <div class="timer-main">
+          <span class="timer-label">Arbeitszeit</span>
+          <span class="timer-value" id="timerValue">0:00:00</span>
+        </div>
+        <div class="timer-progress">
+          <div class="progress-bar">
+            <div class="progress-fill" id="progressFill"></div>
+          </div>
+          <div class="progress-info">
+            <span id="progressPercent">0%</span>
+            <span id="remainingTime">noch 8:00 Std.</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="end-time-display" id="endTimeDisplay">
+        <span class="end-time-label">Feierabend um</span>
+        <span class="end-time-value" id="endTimeValue">--:--</span>
+        <span class="end-time-note" id="endTimeNote">(inkl. 1 Std. Pause)</span>
+      </div>
+
+      <div class="timer-status" id="timerStatus">
+        <span class="status-dot"></span>
+        <span class="status-text">Bereit</span>
+      </div>
+
+      <div class="start-time-input" id="startTimeInput">
+        <label for="manualStartTime">Startzeit anpassen:</label>
+        <input type="time" id="manualStartTime" class="form-input">
+      </div>
+
+      <div class="timer-buttons">
+        <button id="timerToggle" class="btn btn-start">
+          <span class="btn-icon">▶</span>
+          <span class="btn-text">Start</span>
+        </button>
+        <button id="pauseToggle" class="btn btn-pause hidden">
+          <span class="btn-icon">⏸</span>
+          <span class="btn-text">Pause</span>
+        </button>
+      </div>
+
+      <div class="pause-info hidden" id="pauseInfo">
+        <span>Pause: <strong id="pauseDuration">0:00</strong></span>
+      </div>
+    </section>
+
+    <section class="entry-section" id="entrySection">
+      <div class="section-header">
+        <h2>Eintrag speichern</h2>
+      </div>
+      <div class="entry-summary" id="entrySummary">
+        <div class="summary-row">
+          <span class="summary-label">Datum</span>
+          <span class="summary-value" id="summaryDate">--</span>
+        </div>
+        <div class="summary-row">
+          <span class="summary-label">Arbeitszeit</span>
+          <span class="summary-value" id="summaryTimes">--:-- - --:--</span>
+        </div>
+        <div class="summary-row">
+          <span class="summary-label">Netto-Arbeitszeit</span>
+          <span class="summary-value" id="summaryWorked">--:--</span>
+        </div>
+        <div class="summary-row highlight">
+          <span class="summary-label">Differenz</span>
+          <span class="summary-value" id="summaryDiff">--:--</span>
+        </div>
+      </div>
+      <div class="hidden-inputs">
+        <input type="date" id="entryDate">
+        <input type="time" id="startTime">
+        <input type="time" id="endTime">
+      </div>
+      <button id="addEntry" class="btn btn-primary" disabled>Eintrag speichern</button>
+    </section>
+
+    <section class="history-section">
+      <div class="history-header">
+        <h2>Verlauf</h2>
+        <button id="clearHistory" class="btn btn-text btn-danger">Löschen</button>
+      </div>
+      <div id="entriesList" class="entries-list">
+        <p class="empty-message">Noch keine Einträge vorhanden.</p>
+      </div>
+    </section>
+  </div>
+
+  <script src="app.js"></script>
+</body>
+</html>
