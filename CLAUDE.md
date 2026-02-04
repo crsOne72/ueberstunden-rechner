@@ -7,14 +7,13 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 Dual-platform overtime calculator ("Überstundenrechner") for tracking daily work hours. The UI is in German.
 
 - **Chrome Extension**: Original implementation in root directory (`popup.html`, `popup.js`, `styles.css`)
-- **Mobile App**: Capacitor-based iOS/Android app in `www/` directory
+- **PWA**: Progressive Web App in `docs/` directory (hosted via GitHub Pages)
 
 ## Tech Stack
 
 - **Vanilla JavaScript**: No frameworks, single-file architecture
 - **CSS**: Glassmorphism design with animations
-- **Capacitor 6**: Native iOS/Android wrapper
-- **Capacitor Plugins**: `@capacitor/preferences` (storage), `@capacitor/dialog` (native dialogs)
+- **PWA**: Service Worker for offline support, Web App Manifest for installation
 
 ## Architecture
 
@@ -22,10 +21,11 @@ Dual-platform overtime calculator ("Überstundenrechner") for tracking daily wor
 - `popup.html` / `popup.js` / `styles.css`
 - Uses `chrome.storage.local` for persistence
 
-### Mobile App (www/)
-- `www/index.html` / `www/app.js` / `www/styles.css`
-- **Storage Abstraction Layer** (`www/app.js:1-110`): Unified API supporting Capacitor Preferences, Chrome storage, and localStorage fallback
-- Native projects in `android/` and `ios/`
+### PWA (docs/)
+- `docs/index.html` / `docs/app.js` / `docs/styles.css`
+- `docs/sw.js` - Service Worker for offline caching
+- `docs/manifest.json` - PWA manifest
+- **Storage Abstraction Layer** (`docs/app.js:1-110`): Unified API supporting Chrome storage and localStorage fallback
 
 ### Key Data Structures
 
@@ -41,18 +41,11 @@ timerState = { isRunning, isPaused, startTimestamp, pauseStartTimestamp, totalPa
 # Install dependencies
 npm install
 
-# Sync web assets to native projects (after changes to www/)
-npm run sync
+# Generate PWA icons
+node generate-icons.js
 
-# Open in Android Studio
-npm run open:android
-
-# Open in Xcode (macOS only)
-npm run open:ios
-
-# Run on connected device/emulator
-npm run run:android
-npm run run:ios
+# Local testing
+npx serve docs
 ```
 
 ## Development
@@ -63,10 +56,10 @@ npm run run:ios
 3. Click "Load unpacked" and select root directory
 4. Reload extension after changes
 
-### Mobile App
-1. Edit files in `www/`
-2. Run `npm run sync` to copy to native projects
-3. Build/run via Android Studio or Xcode
+### PWA
+1. Edit files in `docs/`
+2. Test locally with `npx serve docs`
+3. Push to GitHub - GitHub Pages auto-deploys
 
 ### Testing
 Manual testing only. Both platforms gracefully handle missing storage APIs with console warnings.

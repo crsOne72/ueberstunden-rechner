@@ -146,7 +146,7 @@ function drawIcon(size) {
 }
 
 // Generate icons
-const iconsDir = path.join(__dirname, 'www', 'icons');
+const iconsDir = path.join(__dirname, 'docs', 'icons');
 if (!fs.existsSync(iconsDir)) {
     fs.mkdirSync(iconsDir, { recursive: true });
 }
