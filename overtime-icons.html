@@ -1,0 +1,382 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Überstundenrechner Icons - Glasmorphism Design</title>
+    <style>
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Display', 'Segoe UI', sans-serif;
+            min-height: 100vh;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 50%, #f093fb 100%);
+            padding: 40px;
+            position: relative;
+            overflow-x: hidden;
+        }
+        /* Animated particles */
+        body::before,
+        body::after {
+            content: '';
+            position: fixed;
+            border-radius: 50%;
+            background: rgba(255, 255, 255, 0.1);
+            animation: float 20s infinite ease-in-out;
+            pointer-events: none;
+        }
+        body::before {
+            width: 400px;
+            height: 400px;
+            top: -150px;
+            right: -150px;
+        }
+        body::after {
+            width: 300px;
+            height: 300px;
+            bottom: -100px;
+            left: -100px;
+            animation-delay: -7s;
+        }
+        @keyframes float {
+            0%, 100% { transform: translate(0, 0) scale(1); }
+            25% { transform: translate(30px, -30px) scale(1.1); }
+            50% { transform: translate(-20px, 20px) scale(0.95); }
+            75% { transform: translate(20px, 10px) scale(1.05); }
+        }
+        .container {
+            max-width: 900px;
+            margin: 0 auto;
+            position: relative;
+            z-index: 1;
+        }
+        h1 {
+            color: white;
+            text-align: center;
+            font-size: 32px;
+            font-weight: 700;
+            letter-spacing: -1px;
+            text-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+            margin-bottom: 30px;
+        }
+        .icon-grid {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 20px;
+            justify-content: center;
+        }
+        .icon-container {
+            background: rgba(255, 255, 255, 0.15);
+            backdrop-filter: blur(20px) saturate(180%);
+            -webkit-backdrop-filter: blur(20px) saturate(180%);
+            border: 1px solid rgba(255, 255, 255, 0.25);
+            border-radius: 24px;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1), inset 0 1px 0 rgba(255, 255, 255, 0.3);
+            padding: 30px;
+            text-align: center;
+            min-width: 200px;
+        }
+        .icon-container p {
+            margin-top: 15px;
+            font-weight: 600;
+            color: white;
+            font-size: 14px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+        .icon-container span {
+            display: block;
+            margin-top: 5px;
+            font-size: 12px;
+            color: rgba(255, 255, 255, 0.7);
+        }
+        canvas {
+            display: block;
+            margin: 0 auto;
+            border-radius: 16px;
+        }
+        .instructions {
+            background: rgba(255, 255, 255, 0.15);
+            backdrop-filter: blur(20px) saturate(180%);
+            -webkit-backdrop-filter: blur(20px) saturate(180%);
+            border: 1px solid rgba(255, 255, 255, 0.25);
+            border-radius: 24px;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1), inset 0 1px 0 rgba(255, 255, 255, 0.3);
+            padding: 25px 30px;
+            margin-bottom: 30px;
+            color: white;
+        }
+        .instructions h2 {
+            margin-bottom: 15px;
+            font-size: 18px;
+            font-weight: 600;
+            letter-spacing: -0.5px;
+        }
+        .instructions ol {
+            padding-left: 20px;
+        }
+        .instructions li {
+            margin: 8px 0;
+            color: rgba(255, 255, 255, 0.9);
+            font-size: 14px;
+        }
+        button {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            padding: 14px 24px;
+            border-radius: 16px;
+            cursor: pointer;
+            font-size: 14px;
+            font-weight: 600;
+            margin-top: 15px;
+            transition: all 0.3s ease;
+            box-shadow: 0 4px 15px rgba(102, 126, 234, 0.4);
+            text-shadow: 0 1px 2px rgba(0, 0, 0, 0.1);
+        }
+        button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(102, 126, 234, 0.5);
+        }
+        button:active {
+            transform: scale(0.98) translateY(0);
+        }
+        .download-all {
+            display: block;
+            width: 100%;
+            max-width: 300px;
+            margin: 30px auto 0;
+            background: linear-gradient(135deg, #4ade80 0%, #22d3ee 100%);
+            box-shadow: 0 4px 15px rgba(74, 222, 128, 0.4);
+        }
+        .download-all:hover {
+            box-shadow: 0 6px 20px rgba(74, 222, 128, 0.5);
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Glasmorphism Icon Generator</h1>
+
+        <div class="instructions">
+            <h2>Anleitung zum Speichern der Icons</h2>
+            <ol>
+                <li>Klicke auf den "Download"-Button unter jedem Icon</li>
+                <li>Die Icons werden automatisch als PNG-Dateien heruntergeladen</li>
+                <li>Speichere sie im <strong>icons</strong>-Ordner deiner Chrome-Erweiterung</li>
+                <li>Die Dateinamen sind bereits korrekt benannt (icon16.png, icon48.png, icon128.png)</li>
+            </ol>
+        </div>
+
+        <div class="icon-grid">
+            <div class="icon-container">
+                <canvas id="icon16" width="16" height="16"></canvas>
+                <p>16x16 px</p>
+                <span>Toolbar Icon</span>
+                <button onclick="downloadIcon('icon16', 'icon16.png')">Download</button>
+            </div>
+
+            <div class="icon-container">
+                <canvas id="icon48" width="48" height="48"></canvas>
+                <p>48x48 px</p>
+                <span>Erweiterungsseite</span>
+                <button onclick="downloadIcon('icon48', 'icon48.png')">Download</button>
+            </div>
+
+            <div class="icon-container">
+                <canvas id="icon128" width="128" height="128"></canvas>
+                <p>128x128 px</p>
+                <span>Chrome Web Store</span>
+                <button onclick="downloadIcon('icon128', 'icon128.png')">Download</button>
+            </div>
+
+            <div class="icon-container">
+                <canvas id="icon192" width="192" height="192"></canvas>
+                <p>192x192 px</p>
+                <span>PWA Icon</span>
+                <button onclick="downloadIcon('icon192', 'icon-192.png')">Download</button>
+            </div>
+
+            <div class="icon-container">
+                <canvas id="icon512" width="512" height="512"></canvas>
+                <p>512x512 px</p>
+                <span>PWA Splash</span>
+                <button onclick="downloadIcon('icon512', 'icon-512.png')">Download</button>
+            </div>
+        </div>
+
+        <button class="download-all" onclick="downloadAllIcons()">Alle Icons herunterladen</button>
+    </div>
+
+    <script>
+        function drawIcon(canvasId, size) {
+            const canvas = document.getElementById(canvasId);
+            const ctx = canvas.getContext('2d');
+
+            const scale = size / 128;
+            const centerX = size / 2;
+            const centerY = size / 2;
+
+            // Gradient Background (matching the new design)
+            const bgGradient = ctx.createLinearGradient(0, 0, size, size);
+            bgGradient.addColorStop(0, '#667eea');
+            bgGradient.addColorStop(0.5, '#764ba2');
+            bgGradient.addColorStop(1, '#f093fb');
+
+            // Rounded rectangle background
+            const radius = size * 0.22;
+            ctx.beginPath();
+            ctx.moveTo(radius, 0);
+            ctx.lineTo(size - radius, 0);
+            ctx.quadraticCurveTo(size, 0, size, radius);
+            ctx.lineTo(size, size - radius);
+            ctx.quadraticCurveTo(size, size, size - radius, size);
+            ctx.lineTo(radius, size);
+            ctx.quadraticCurveTo(0, size, 0, size - radius);
+            ctx.lineTo(0, radius);
+            ctx.quadraticCurveTo(0, 0, radius, 0);
+            ctx.closePath();
+            ctx.fillStyle = bgGradient;
+            ctx.fill();
+
+            // Glassmorphism overlay circle (subtle)
+            ctx.fillStyle = 'rgba(255, 255, 255, 0.15)';
+            ctx.beginPath();
+            ctx.arc(centerX - 15 * scale, centerY - 15 * scale, 50 * scale, 0, Math.PI * 2);
+            ctx.fill();
+
+            // Clock face - frosted glass effect
+            ctx.fillStyle = 'rgba(255, 255, 255, 0.25)';
+            ctx.beginPath();
+            ctx.arc(centerX, centerY, 42 * scale, 0, Math.PI * 2);
+            ctx.fill();
+
+            // Clock face inner - more opaque
+            ctx.fillStyle = 'rgba(255, 255, 255, 0.9)';
+            ctx.beginPath();
+            ctx.arc(centerX, centerY, 38 * scale, 0, Math.PI * 2);
+            ctx.fill();
+
+            // Clock border with gradient
+            const borderGradient = ctx.createLinearGradient(
+                centerX - 40 * scale,
+                centerY - 40 * scale,
+                centerX + 40 * scale,
+                centerY + 40 * scale
+            );
+            borderGradient.addColorStop(0, '#667eea');
+            borderGradient.addColorStop(1, '#764ba2');
+            ctx.strokeStyle = borderGradient;
+            ctx.lineWidth = 3 * scale;
+            ctx.beginPath();
+            ctx.arc(centerX, centerY, 38 * scale, 0, Math.PI * 2);
+            ctx.stroke();
+
+            // Hour markers (small dots)
+            for (let i = 0; i < 12; i++) {
+                const angle = (i * 30 - 90) * Math.PI / 180;
+                const markerRadius = i % 3 === 0 ? 2.5 * scale : 1.5 * scale;
+                const markerDist = 30 * scale;
+                const x = centerX + Math.cos(angle) * markerDist;
+                const y = centerY + Math.sin(angle) * markerDist;
+
+                ctx.fillStyle = '#764ba2';
+                ctx.beginPath();
+                ctx.arc(x, y, markerRadius, 0, Math.PI * 2);
+                ctx.fill();
+            }
+
+            // Hour hand (pointing to ~10)
+            ctx.strokeStyle = '#667eea';
+            ctx.lineWidth = 4 * scale;
+            ctx.lineCap = 'round';
+            ctx.beginPath();
+            ctx.moveTo(centerX, centerY);
+            const hourAngle = (-60) * Math.PI / 180;
+            ctx.lineTo(
+                centerX + Math.cos(hourAngle) * 18 * scale,
+                centerY + Math.sin(hourAngle) * 18 * scale
+            );
+            ctx.stroke();
+
+            // Minute hand (pointing to ~2)
+            ctx.strokeStyle = '#764ba2';
+            ctx.lineWidth = 3 * scale;
+            ctx.beginPath();
+            ctx.moveTo(centerX, centerY);
+            const minuteAngle = (60) * Math.PI / 180;
+            ctx.lineTo(
+                centerX + Math.cos(minuteAngle) * 26 * scale,
+                centerY + Math.sin(minuteAngle) * 26 * scale
+            );
+            ctx.stroke();
+
+            // Center dot
+            const centerGradient = ctx.createRadialGradient(
+                centerX, centerY, 0,
+                centerX, centerY, 4 * scale
+            );
+            centerGradient.addColorStop(0, '#667eea');
+            centerGradient.addColorStop(1, '#764ba2');
+            ctx.fillStyle = centerGradient;
+            ctx.beginPath();
+            ctx.arc(centerX, centerY, 4 * scale, 0, Math.PI * 2);
+            ctx.fill();
+
+            // Plus badge (for overtime) - positioned bottom right
+            const badgeX = centerX + 28 * scale;
+            const badgeY = centerY + 28 * scale;
+            const badgeRadius = 16 * scale;
+
+            // Badge shadow
+            ctx.fillStyle = 'rgba(74, 222, 128, 0.3)';
+            ctx.beginPath();
+            ctx.arc(badgeX, badgeY + 2 * scale, badgeRadius, 0, Math.PI * 2);
+            ctx.fill();
+
+            // Badge gradient background
+            const badgeGradient = ctx.createLinearGradient(
+                badgeX - badgeRadius, badgeY - badgeRadius,
+                badgeX + badgeRadius, badgeY + badgeRadius
+            );
+            badgeGradient.addColorStop(0, '#4ade80');
+            badgeGradient.addColorStop(1, '#22d3ee');
+            ctx.fillStyle = badgeGradient;
+            ctx.beginPath();
+            ctx.arc(badgeX, badgeY, badgeRadius, 0, Math.PI * 2);
+            ctx.fill();
+
+            // Plus symbol
+            ctx.fillStyle = 'white';
+            ctx.fillRect(badgeX - 6 * scale, badgeY - 1.5 * scale, 12 * scale, 3 * scale);
+            ctx.fillRect(badgeX - 1.5 * scale, badgeY - 6 * scale, 3 * scale, 12 * scale);
+        }
+
+        function downloadIcon(canvasId, filename) {
+            const canvas = document.getElementById(canvasId);
+            const link = document.createElement('a');
+            link.download = filename;
+            link.href = canvas.toDataURL('image/png');
+            link.click();
+        }
+
+        function downloadAllIcons() {
+            setTimeout(() => downloadIcon('icon16', 'icon16.png'), 0);
+            setTimeout(() => downloadIcon('icon48', 'icon48.png'), 200);
+            setTimeout(() => downloadIcon('icon128', 'icon128.png'), 400);
+            setTimeout(() => downloadIcon('icon192', 'icon-192.png'), 600);
+            setTimeout(() => downloadIcon('icon512', 'icon-512.png'), 800);
+        }
+
+        // Draw all icons
+        drawIcon('icon16', 16);
+        drawIcon('icon48', 48);
+        drawIcon('icon128', 128);
+        drawIcon('icon192', 192);
+        drawIcon('icon512', 512);
+    </script>
+</body>
+</html>

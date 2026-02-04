@@ -1,6 +1,12 @@
 # Dependencies
 node_modules/
 
+# Backups
+capacitor-backup.tar.gz
+
+# Claude Code
+.claude/
+
 # Capacitor native projects (generated, can be recreated with `npx cap add`)
 # Uncomment if you want to exclude them from version control:
 # android/
