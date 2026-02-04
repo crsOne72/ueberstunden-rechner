@@ -418,6 +418,12 @@ h3 {
   color: rgba(255, 255, 255, 0.6);
 }
 
+.progress-info .overtime {
+  color: #4ade80;
+  font-weight: 600;
+  text-shadow: 0 0 8px rgba(74, 222, 128, 0.4);
+}
+
 /* End Time Display */
 .end-time-display {
   background: rgba(255, 255, 255, 0.1);

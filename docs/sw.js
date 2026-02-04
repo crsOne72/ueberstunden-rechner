@@ -1,4 +1,4 @@
-const CACHE_NAME = 'ueberstunden-v1';
+const CACHE_NAME = 'ueberstunden-v2';
 const ASSETS = [
   './',
   './index.html',

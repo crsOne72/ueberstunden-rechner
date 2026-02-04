@@ -818,11 +818,17 @@ function updateTimerDisplay() {
     elements.progressPercent.textContent = `${Math.round(progressPercent)}%`;
   }
 
-  const remainingMinutes = Math.max(0, targetMinutes - workedMinutes);
+  const diffMinutes = workedMinutes - targetMinutes;
   if (elements.remainingTime) {
-    elements.remainingTime.textContent = remainingMinutes > 0
-      ? `noch ${formatMinutesSimple(remainingMinutes)} Std.`
-      : 'Soll erreicht!';
+    elements.remainingTime.classList.remove('overtime');
+    if (diffMinutes < 0) {
+      // Noch nicht am Soll
+      elements.remainingTime.textContent = `noch ${formatMinutesSimple(Math.abs(diffMinutes))} Std.`;
+    } else {
+      // Überstunden!
+      elements.remainingTime.textContent = `+${formatMinutesSimple(diffMinutes)} Überstunden`;
+      elements.remainingTime.classList.add('overtime');
+    }
   }
 
   updatePauseDisplay();
