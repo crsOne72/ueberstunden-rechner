@@ -136,6 +136,7 @@ document.addEventListener('DOMContentLoaded', init);
 
 async function init() {
   await Storage.init();
+  applyDailyTheme();
   initElements();
   await loadData();
   setupEventListeners();
@@ -146,6 +147,35 @@ async function init() {
   updateEndTimeDisplay();
   restoreTimerState();
   updateEntrySummary();
+}
+
+function applyDailyTheme() {
+  const themes = [
+    // Sonntag - Warm Sunset
+    { bg1: '#f97316', bg2: '#e11d48', bg3: '#fbbf24' },
+    // Montag - Ocean Blue
+    { bg1: '#667eea', bg2: '#764ba2', bg3: '#f093fb' },
+    // Dienstag - Teal Dream
+    { bg1: '#0ea5e9', bg2: '#6366f1', bg3: '#a78bfa' },
+    // Mittwoch - Emerald Forest
+    { bg1: '#059669', bg2: '#0d9488', bg3: '#06b6d4' },
+    // Donnerstag - Amber Glow
+    { bg1: '#d97706', bg2: '#ea580c', bg3: '#fbbf24' },
+    // Freitag - Pink Party
+    { bg1: '#ec4899', bg2: '#8b5cf6', bg3: '#6366f1' },
+    // Samstag - Deep Night
+    { bg1: '#4f46e5', bg2: '#7c3aed', bg3: '#a855f7' },
+  ];
+
+  const day = new Date().getDay();
+  const theme = themes[day];
+  const root = document.documentElement;
+  root.style.setProperty('--bg-1', theme.bg1);
+  root.style.setProperty('--bg-2', theme.bg2);
+  root.style.setProperty('--bg-3', theme.bg3);
+
+  const meta = document.querySelector('meta[name="theme-color"]');
+  if (meta) meta.setAttribute('content', theme.bg1);
 }
 
 function initElements() {
@@ -375,7 +405,9 @@ async function handleAddEntry() {
   }
 
   const extraPauseMinutes = Math.floor((timerState.totalPausedMs || 0) / 60000);
-  const breakMinutes = settings.breakMinutes + extraPauseMinutes;
+  const grossWorked = parseTime(endTime) - parseTime(startTime);
+  const scheduledBreak = grossWorked > 360 ? settings.breakMinutes : 0;
+  const breakMinutes = scheduledBreak + extraPauseMinutes;
   const worked = calculateWorkedMinutes(startTime, endTime, breakMinutes);
   const diff = calculateDifference(worked);
 
@@ -674,7 +706,11 @@ function resetTimerState() {
     elements.progressPercent.textContent = '0%';
   }
   if (elements.remainingTime) {
-    elements.remainingTime.textContent = `noch ${formatMinutesSimple(settings.targetMinutes)} Std.`;
+    let text = `noch ${formatMinutesSimple(settings.targetMinutes)} Std.`;
+    if (settings.breakMinutes > 0) {
+      text += ` (${formatMinutesSimple(settings.targetMinutes + settings.breakMinutes)} inkl. Pause)`;
+    }
+    elements.remainingTime.textContent = text;
   }
 
   updateTimerUI(false, false);
@@ -823,7 +859,12 @@ function updateTimerDisplay() {
     elements.remainingTime.classList.remove('overtime');
     if (diffMinutes < 0) {
       // Noch nicht am Soll
-      elements.remainingTime.textContent = `noch ${formatMinutesSimple(Math.abs(diffMinutes))} Std.`;
+      const remaining = Math.abs(diffMinutes);
+      let text = `noch ${formatMinutesSimple(remaining)} Std.`;
+      if (settings.breakMinutes > 0) {
+        text += ` (${formatMinutesSimple(remaining + settings.breakMinutes)} inkl. Pause)`;
+      }
+      elements.remainingTime.textContent = text;
     } else {
       // Überstunden!
       elements.remainingTime.textContent = `+${formatMinutesSimple(diffMinutes)} Überstunden`;
@@ -907,7 +948,9 @@ function updateEntrySummary() {
   }
 
   const extraPauseMinutes = Math.floor((timerState.totalPausedMs || 0) / 60000);
-  const breakMinutes = (settings.breakMinutes || 60) + extraPauseMinutes;
+  const grossWorked = parseTime(endTime) - parseTime(startTime);
+  const scheduledBreak = grossWorked > 360 ? (settings.breakMinutes || 60) : 0;
+  const breakMinutes = scheduledBreak + extraPauseMinutes;
   const worked = calculateWorkedMinutes(startTime, endTime, breakMinutes);
   const diff = calculateDifference(worked);
 

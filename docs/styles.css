@@ -1,3 +1,9 @@
+:root {
+  --bg-1: #667eea;
+  --bg-2: #764ba2;
+  --bg-3: #f093fb;
+}
+
 * {
   box-sizing: border-box;
   margin: 0;
@@ -9,7 +15,7 @@ body {
   font-size: 14px;
   line-height: 1.5;
   color: #ffffff;
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 50%, #f093fb 100%);
+  background: linear-gradient(135deg, var(--bg-1) 0%, var(--bg-2) 50%, var(--bg-3) 100%);
   width: 100%;
   min-height: 100vh;
   overflow-x: hidden;
@@ -566,7 +572,7 @@ h3 {
 
 .btn-start {
   flex: 1;
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  background: linear-gradient(135deg, var(--bg-1) 0%, var(--bg-2) 100%);
   color: white;
   box-shadow: 0 4px 15px rgba(102, 126, 234, 0.4);
 }
@@ -596,7 +602,7 @@ h3 {
 }
 
 .btn-pause.active {
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  background: linear-gradient(135deg, var(--bg-1) 0%, var(--bg-2) 100%);
   box-shadow: 0 4px 15px rgba(102, 126, 234, 0.4);
 }
 
@@ -622,7 +628,7 @@ h3 {
 
 .btn-primary {
   width: 100%;
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  background: linear-gradient(135deg, var(--bg-1) 0%, var(--bg-2) 100%);
   color: white;
   box-shadow: 0 4px 15px rgba(102, 126, 234, 0.4);
 }
