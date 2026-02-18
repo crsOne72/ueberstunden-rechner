@@ -1,4 +1,5 @@
 (function initOvertimeUtils(globalScope) {
+  const DAILY_TARGET_MINUTES = 468;
   const MANDATORY_BREAK_THRESHOLD_MINUTES = 360;
   const MANDATORY_BREAK_MINUTES = 30;
 
@@ -8,37 +9,6 @@
     const hours = parseInt(parts[0], 10) || 0;
     const minutes = parseInt(parts[1], 10) || 0;
     return hours * 60 + minutes;
-  }
-
-  function calculateGrossMinutes(startTime, endTime) {
-    const start = parseTimeToMinutes(startTime);
-    const end = parseTimeToMinutes(endTime);
-    let gross = end - start;
-
-    // Handle shifts that end after midnight.
-    if (gross < 0) {
-      gross += 24 * 60;
-    }
-
-    return gross;
-  }
-
-  function calculateBreakMinutes(
-    grossWorkedMinutes,
-    scheduledBreakMinutes,
-    extraPauseMinutes = 0,
-    breakThresholdMinutes = 360
-  ) {
-    const gross = Number(grossWorkedMinutes) || 0;
-    const scheduled = gross > breakThresholdMinutes ? (Number(scheduledBreakMinutes) || 0) : 0;
-    const extra = Number(extraPauseMinutes) || 0;
-    return Math.max(0, scheduled + extra);
-  }
-
-  function calculateWorkedMinutes(startTime, endTime, breakMinutes) {
-    const grossWorkedMinutes = calculateGrossMinutes(startTime, endTime);
-    const breakMins = Number(breakMinutes) || 0;
-    return Math.max(0, grossWorkedMinutes - breakMins);
   }
 
   function isOvernightShift(startTime, endTime) {
@@ -87,10 +57,10 @@
     return `${String(hoursPart).padStart(2, '0')}:${String(minutesPart).padStart(2, '0')}`;
   }
 
-  function calculateLiveWorkBalance({
+  function calculateWorkBalance({
     workStart,
     now,
-    dailyTargetMinutes,
+    dailyTargetMinutes = DAILY_TARGET_MINUTES,
     manualBreakMinutes = 0
   }) {
     const grossWorkedMinutes = minutesBetween(workStart, now);
@@ -104,7 +74,7 @@
       grossWorkedMinutes - mandatoryBreakMinutes - normalizedManualBreakMinutes
     );
     const balanceMinutes = effectiveWorkedMinutes - normalizedTargetMinutes;
-    const expectedEnd =
+    const expectedEndTime =
       (Number(workStart) || 0) +
       (normalizedTargetMinutes + mandatoryBreakMinutes + normalizedManualBreakMinutes) * 60000;
 
@@ -113,19 +83,16 @@
       mandatoryBreakMinutes,
       manualBreakMinutes: normalizedManualBreakMinutes,
       effectiveWorkedMinutes,
-      dailyTargetMinutes: normalizedTargetMinutes,
       balanceMinutes,
-      expectedEnd
+      expectedEndTime
     };
   }
 
   globalScope.OvertimeUtils = {
+    DAILY_TARGET_MINUTES,
     MANDATORY_BREAK_THRESHOLD_MINUTES,
     MANDATORY_BREAK_MINUTES,
     parseTimeToMinutes,
-    calculateGrossMinutes,
-    calculateBreakMinutes,
-    calculateWorkedMinutes,
     isOvernightShift,
     formatDateKey,
     parseDateKey,
@@ -133,6 +100,6 @@
     formatDateForDisplay,
     minutesBetween,
     formatMinutesHHMM,
-    calculateLiveWorkBalance
+    calculateWorkBalance
   };
 })(globalThis);

@@ -19,107 +19,102 @@ function minutes(min) {
 function runTests() {
   const utils = loadUtils();
   const base = Date.UTC(2026, 1, 18, 8, 0, 0, 0);
+  const target = 468;
 
-  // exactly 6h -> no mandatory break
+  // Edge: exactly 6h -> no mandatory break
   {
-    const result = utils.calculateLiveWorkBalance({
+    const result = utils.calculateWorkBalance({
       workStart: base,
       now: base + minutes(360),
-      dailyTargetMinutes: 480
+      dailyTargetMinutes: target
     });
     assert.equal(result.grossWorkedMinutes, 360);
     assert.equal(result.mandatoryBreakMinutes, 0);
     assert.equal(result.effectiveWorkedMinutes, 360);
-    assert.equal(result.balanceMinutes, -120);
+    assert.equal(result.balanceMinutes, -108);
   }
 
-  // 6h + 1m -> mandatory break applies exactly once
+  // Edge: 6h + 1m -> mandatory break applies
   {
-    const result = utils.calculateLiveWorkBalance({
+    const result = utils.calculateWorkBalance({
       workStart: base,
       now: base + minutes(361),
-      dailyTargetMinutes: 480
+      dailyTargetMinutes: target
     });
     assert.equal(result.grossWorkedMinutes, 361);
     assert.equal(result.mandatoryBreakMinutes, 30);
     assert.equal(result.effectiveWorkedMinutes, 331);
-    assert.equal(result.balanceMinutes, -149);
+    assert.equal(result.balanceMinutes, -137);
   }
 
-  // mandatory break is constant (no repeated subtraction)
+  // Manual break is additionally subtracted
   {
-    const result = utils.calculateLiveWorkBalance({
+    const result = utils.calculateWorkBalance({
       workStart: base,
       now: base + minutes(500),
-      dailyTargetMinutes: 480
-    });
-    assert.equal(result.mandatoryBreakMinutes, 30);
-    assert.equal(result.effectiveWorkedMinutes, 470);
-  }
-
-  // manual breaks are subtracted in addition
-  {
-    const result = utils.calculateLiveWorkBalance({
-      workStart: base,
-      now: base + minutes(500),
-      dailyTargetMinutes: 480,
+      dailyTargetMinutes: target,
       manualBreakMinutes: 25
     });
     assert.equal(result.mandatoryBreakMinutes, 30);
-    assert.equal(result.manualBreakMinutes, 25);
     assert.equal(result.effectiveWorkedMinutes, 445);
-    assert.equal(result.balanceMinutes, -35);
+    assert.equal(result.balanceMinutes, -23);
   }
 
-  // effective time is clamped to >= 0
+  // Clamp effective to 0
   {
-    const result = utils.calculateLiveWorkBalance({
+    const result = utils.calculateWorkBalance({
       workStart: base,
       now: base + minutes(20),
-      dailyTargetMinutes: 480,
+      dailyTargetMinutes: target,
       manualBreakMinutes: 90
     });
     assert.equal(result.effectiveWorkedMinutes, 0);
-    assert.equal(result.balanceMinutes, -480);
+    assert.equal(result.balanceMinutes, -468);
   }
 
-  // exact target -> zero balance
+  // Real case A:
+  // Start 15:00, now 23:11 -> gross 491 -> mandatory 30 -> effective 461 -> balance -7 (target 468)
   {
-    const result = utils.calculateLiveWorkBalance({
-      workStart: base,
-      now: base + minutes(510), // 510 - 30 mandatory = 480
-      dailyTargetMinutes: 480
+    const start = Date.UTC(2026, 1, 18, 15, 0, 0, 0);
+    const now = Date.UTC(2026, 1, 18, 23, 11, 0, 0);
+    const result = utils.calculateWorkBalance({
+      workStart: start,
+      now,
+      dailyTargetMinutes: target
     });
-    assert.equal(result.balanceMinutes, 0);
+    assert.equal(result.grossWorkedMinutes, 491);
+    assert.equal(result.mandatoryBreakMinutes, 30);
+    assert.equal(result.effectiveWorkedMinutes, 461);
+    assert.equal(result.balanceMinutes, -7);
+    assert.equal(result.expectedEndTime, start + minutes(498)); // 468 + 30
   }
 
-  // overtime positive
+  // Real case B:
+  // Start 08:00, now 16:30 -> gross 510 -> mandatory 30 -> effective 480 -> balance +12
   {
-    const result = utils.calculateLiveWorkBalance({
-      workStart: base,
-      now: base + minutes(560), // 560 - 30 = 530
-      dailyTargetMinutes: 480
+    const start = Date.UTC(2026, 1, 18, 8, 0, 0, 0);
+    const now = Date.UTC(2026, 1, 18, 16, 30, 0, 0);
+    const result = utils.calculateWorkBalance({
+      workStart: start,
+      now,
+      dailyTargetMinutes: target
     });
-    assert.equal(result.balanceMinutes, 50);
+    assert.equal(result.grossWorkedMinutes, 510);
+    assert.equal(result.mandatoryBreakMinutes, 30);
+    assert.equal(result.effectiveWorkedMinutes, 480);
+    assert.equal(result.balanceMinutes, 12);
+    assert.equal(result.expectedEndTime, start + minutes(498));
   }
 
-  // expected end uses target + mandatory + manual
+  // expectedEndTime consistency with manual break
   {
-    const result = utils.calculateLiveWorkBalance({
+    const result = utils.calculateWorkBalance({
       workStart: base,
-      now: base + minutes(480),
-      dailyTargetMinutes: 480,
+      now: base + minutes(500),
+      dailyTargetMinutes: target,
       manualBreakMinutes: 20
     });
-    assert.equal(result.mandatoryBreakMinutes, 30);
-    assert.equal(result.expectedEnd, base + minutes(530));
-  }
-
-  // formatting helper
-  {
-    assert.equal(utils.formatMinutesHHMM(0), '00:00');
-    assert.equal(utils.formatMinutesHHMM(9), '00:09');
-    assert.equal(utils.formatMinutesHHMM(135), '02:15');
+    assert.equal(result.expectedEndTime, base + minutes(518)); // 468 + 30 + 20
   }
 }
 

@@ -117,7 +117,7 @@ const Storage = {
 // State
 let elements = {};
 let settings = {
-  targetMinutes: 480,
+  targetMinutes: OvertimeUtils.DAILY_TARGET_MINUTES,
   breakMinutes: 60
 };
 let entries = [];
@@ -225,7 +225,7 @@ async function loadData() {
 
   if (result.settings) {
     settings = {
-      targetMinutes: result.settings.targetMinutes || 480,
+      targetMinutes: result.settings.targetMinutes || OvertimeUtils.DAILY_TARGET_MINUTES,
       breakMinutes: result.settings.breakMinutes !== undefined ? result.settings.breakMinutes : 60
     };
   }
@@ -382,27 +382,6 @@ function formatSeconds(totalSeconds) {
   return `${hours}:${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
 }
 
-function calculateGrossMinutes(startTime, endTime) {
-  return OvertimeUtils.calculateGrossMinutes(startTime, endTime);
-}
-
-function calculateBreakMinutes(grossWorkedMinutes, extraPauseMinutes = 0) {
-  return OvertimeUtils.calculateBreakMinutes(
-    grossWorkedMinutes,
-    OvertimeUtils.MANDATORY_BREAK_MINUTES,
-    extraPauseMinutes,
-    OvertimeUtils.MANDATORY_BREAK_THRESHOLD_MINUTES
-  );
-}
-
-function calculateWorkedMinutes(startTime, endTime, breakMinutes) {
-  return OvertimeUtils.calculateWorkedMinutes(startTime, endTime, breakMinutes);
-}
-
-function calculateDifference(workedMinutes) {
-  return workedMinutes - settings.targetMinutes;
-}
-
 function isOvernightShift(startTime, endTime) {
   return OvertimeUtils.isOvernightShift(startTime, endTime);
 }
@@ -421,10 +400,30 @@ function getLiveWorkComputation(nowTimestamp = Date.now()) {
   }
 
   const manualBreakMinutes = Math.floor(getTotalPauseMs(true) / 60000);
-  return OvertimeUtils.calculateLiveWorkBalance({
+  return OvertimeUtils.calculateWorkBalance({
     workStart: timerState.startTimestamp,
     now: nowTimestamp,
-    dailyTargetMinutes: settings.targetMinutes || 0,
+    dailyTargetMinutes: settings.targetMinutes || OvertimeUtils.DAILY_TARGET_MINUTES,
+    manualBreakMinutes
+  });
+}
+
+function getRangeWorkComputation(startTime, endTime, manualBreakMinutes = 0) {
+  if (!startTime || !endTime) {
+    return null;
+  }
+
+  const startMinutes = OvertimeUtils.parseTimeToMinutes(startTime);
+  const endMinutes = OvertimeUtils.parseTimeToMinutes(endTime);
+  let grossWorkedMinutes = endMinutes - startMinutes;
+  if (grossWorkedMinutes < 0) {
+    grossWorkedMinutes += 24 * 60;
+  }
+
+  return OvertimeUtils.calculateWorkBalance({
+    workStart: 0,
+    now: grossWorkedMinutes * 60000,
+    dailyTargetMinutes: settings.targetMinutes || OvertimeUtils.DAILY_TARGET_MINUTES,
     manualBreakMinutes
   });
 }
@@ -440,10 +439,13 @@ async function handleAddEntry() {
   }
 
   const extraPauseMinutes = Math.floor((timerState.totalPausedMs || 0) / 60000);
-  const grossWorked = calculateGrossMinutes(startTime, endTime);
-  const breakMinutes = calculateBreakMinutes(grossWorked, extraPauseMinutes);
-  const worked = calculateWorkedMinutes(startTime, endTime, breakMinutes);
-  const diff = calculateDifference(worked);
+  const computation = getRangeWorkComputation(startTime, endTime, extraPauseMinutes);
+  if (!computation) {
+    return;
+  }
+  const breakMinutes = computation.mandatoryBreakMinutes + computation.manualBreakMinutes;
+  const worked = computation.effectiveWorkedMinutes;
+  const diff = computation.balanceMinutes;
 
   const entry = {
     id: Date.now(),
@@ -709,10 +711,12 @@ function updateStoppedTimerDisplayFromEntry() {
   }
 
   const extraPauseMinutes = Math.floor((timerState.totalPausedMs || 0) / 60000);
-  const grossWorked = calculateGrossMinutes(startTime, endTime);
-  const breakMinutes = calculateBreakMinutes(grossWorked, extraPauseMinutes);
-  const worked = calculateWorkedMinutes(startTime, endTime, breakMinutes);
-  const diffMinutes = calculateDifference(worked);
+  const computation = getRangeWorkComputation(startTime, endTime, extraPauseMinutes);
+  if (!computation) {
+    return;
+  }
+  const worked = computation.effectiveWorkedMinutes;
+  const diffMinutes = computation.balanceMinutes;
   const progressPercent = targetMinutes === 0 ? 100 : Math.min(100, (worked / targetMinutes) * 100);
 
   if (elements.timerValue) {
@@ -908,9 +912,10 @@ function updateTimerDisplay() {
     elements.timerValue.textContent = OvertimeUtils.formatMinutesHHMM(computation.effectiveWorkedMinutes);
   }
 
-  const progressPercent = computation.dailyTargetMinutes === 0
+  const targetMinutes = settings.targetMinutes || OvertimeUtils.DAILY_TARGET_MINUTES;
+  const progressPercent = targetMinutes === 0
     ? 100
-    : Math.min(100, (computation.effectiveWorkedMinutes / computation.dailyTargetMinutes) * 100);
+    : Math.min(100, (computation.effectiveWorkedMinutes / targetMinutes) * 100);
 
   if (elements.progressFill) {
     elements.progressFill.style.width = `${progressPercent}%`;
@@ -963,13 +968,13 @@ function updateEndTimeDisplay() {
   startDate.setHours(hours || 0, minutes || 0, 0, 0);
   const startTimestamp = startDate.getTime();
   const manualBreakMinutes = timerState.startTimestamp ? Math.floor(getTotalPauseMs(true) / 60000) : 0;
-  const computation = OvertimeUtils.calculateLiveWorkBalance({
+  const computation = OvertimeUtils.calculateWorkBalance({
     workStart: startTimestamp,
     now: Date.now(),
-    dailyTargetMinutes: settings.targetMinutes || 0,
+    dailyTargetMinutes: settings.targetMinutes || OvertimeUtils.DAILY_TARGET_MINUTES,
     manualBreakMinutes
   });
-  const expectedEndDate = new Date(computation.expectedEnd);
+  const expectedEndDate = new Date(computation.expectedEndTime);
 
   if (elements.endTimeValue) {
     elements.endTimeValue.textContent = formatTime(expectedEndDate.getHours(), expectedEndDate.getMinutes());
@@ -1003,10 +1008,12 @@ function updateEntrySummary() {
   }
 
   const extraPauseMinutes = Math.floor((timerState.totalPausedMs || 0) / 60000);
-  const grossWorked = calculateGrossMinutes(startTime, endTime);
-  const breakMinutes = calculateBreakMinutes(grossWorked, extraPauseMinutes);
-  const worked = calculateWorkedMinutes(startTime, endTime, breakMinutes);
-  const diff = calculateDifference(worked);
+  const computation = getRangeWorkComputation(startTime, endTime, extraPauseMinutes);
+  if (!computation) {
+    return;
+  }
+  const worked = computation.effectiveWorkedMinutes;
+  const diff = computation.balanceMinutes;
 
   if (elements.summaryDate) elements.summaryDate.textContent = formatDate(date);
   if (elements.summaryTimes) elements.summaryTimes.textContent = `${startTime} - ${endTime}${isOvernightShift(startTime, endTime) ? ' (+1 Tag)' : ''}`;
