@@ -357,12 +357,12 @@ function formatMinutes(totalMinutes) {
 
 function formatMinutesSimple(totalMinutes) {
   if (typeof totalMinutes !== 'number' || isNaN(totalMinutes)) {
-    return '0:00';
+    return '00:00';
   }
   const absMinutes = Math.abs(Math.floor(totalMinutes));
   const hours = Math.floor(absMinutes / 60);
   const minutes = absMinutes % 60;
-  return `${hours}:${minutes.toString().padStart(2, '0')}`;
+  return `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}`;
 }
 
 function formatTime(hours, minutes) {
@@ -389,9 +389,9 @@ function calculateGrossMinutes(startTime, endTime) {
 function calculateBreakMinutes(grossWorkedMinutes, extraPauseMinutes = 0) {
   return OvertimeUtils.calculateBreakMinutes(
     grossWorkedMinutes,
-    settings.breakMinutes || 0,
+    OvertimeUtils.MANDATORY_BREAK_MINUTES,
     extraPauseMinutes,
-    360
+    OvertimeUtils.MANDATORY_BREAK_THRESHOLD_MINUTES
   );
 }
 
@@ -405,6 +405,28 @@ function calculateDifference(workedMinutes) {
 
 function isOvernightShift(startTime, endTime) {
   return OvertimeUtils.isOvernightShift(startTime, endTime);
+}
+
+function getTotalPauseMs(includeOngoingPause = true) {
+  let totalPauseMs = timerState.totalPausedMs || 0;
+  if (includeOngoingPause && timerState.isPaused && timerState.pauseStartTimestamp) {
+    totalPauseMs += Date.now() - timerState.pauseStartTimestamp;
+  }
+  return totalPauseMs;
+}
+
+function getLiveWorkComputation(nowTimestamp = Date.now()) {
+  if (!timerState.startTimestamp) {
+    return null;
+  }
+
+  const manualBreakMinutes = Math.floor(getTotalPauseMs(true) / 60000);
+  return OvertimeUtils.calculateLiveWorkBalance({
+    workStart: timerState.startTimestamp,
+    now: nowTimestamp,
+    dailyTargetMinutes: settings.targetMinutes || 0,
+    manualBreakMinutes
+  });
 }
 
 // Entry Management
@@ -581,6 +603,13 @@ function restoreTimerState() {
     updateEndTimeDisplay();
   } else {
     updateTimerUI(false, false);
+    if (elements.timerValue) {
+      elements.timerValue.textContent = '00:00';
+    }
+    if (elements.remainingTime) {
+      elements.remainingTime.classList.remove('overtime');
+      elements.remainingTime.textContent = `Noch ${OvertimeUtils.formatMinutesHHMM(settings.targetMinutes || 0)} zu arbeiten`;
+    }
   }
 }
 
@@ -697,7 +726,7 @@ function resetTimerState() {
     elements.manualStartTime.value = '';
   }
   if (elements.timerValue) {
-    elements.timerValue.textContent = '0:00:00';
+    elements.timerValue.textContent = '00:00';
   }
   if (elements.addEntry) {
     elements.addEntry.disabled = true;
@@ -710,11 +739,7 @@ function resetTimerState() {
   }
   if (elements.remainingTime) {
     elements.remainingTime.classList.remove('overtime');
-    let text = `noch ${formatMinutesSimple(settings.targetMinutes)} Std.`;
-    if (settings.breakMinutes > 0) {
-      text += ` (${formatMinutesSimple(settings.targetMinutes + settings.breakMinutes)} inkl. Pause)`;
-    }
-    elements.remainingTime.textContent = text;
+    elements.remainingTime.textContent = `Noch ${OvertimeUtils.formatMinutesHHMM(settings.targetMinutes || 0)} zu arbeiten`;
   }
 
   updateTimerUI(false, false);
@@ -825,31 +850,23 @@ function stopTimerInterval() {
 function updateTimerDisplay() {
   if (!timerState.startTimestamp) {
     if (elements.timerValue) {
-      elements.timerValue.textContent = '0:00:00';
+      elements.timerValue.textContent = '00:00';
     }
     return;
   }
 
-  const now = Date.now();
-  const totalPausedMs = timerState.totalPausedMs || 0;
-  let elapsed = now - timerState.startTimestamp - totalPausedMs;
-
-  // If currently paused, subtract ongoing pause time
-  if (timerState.isPaused && timerState.pauseStartTimestamp) {
-    elapsed -= (now - timerState.pauseStartTimestamp);
+  const computation = getLiveWorkComputation(Date.now());
+  if (!computation) {
+    return;
   }
-
-  elapsed = Math.max(0, elapsed);
-  const totalSeconds = Math.floor(elapsed / 1000);
 
   if (elements.timerValue) {
-    elements.timerValue.textContent = formatSeconds(totalSeconds);
+    elements.timerValue.textContent = OvertimeUtils.formatMinutesHHMM(computation.effectiveWorkedMinutes);
   }
 
-  // Update progress
-  const workedMinutes = Math.floor(totalSeconds / 60);
-  const targetMinutes = Math.max(0, settings.targetMinutes || 0);
-  const progressPercent = targetMinutes === 0 ? 100 : Math.min(100, (workedMinutes / targetMinutes) * 100);
+  const progressPercent = computation.dailyTargetMinutes === 0
+    ? 100
+    : Math.min(100, (computation.effectiveWorkedMinutes / computation.dailyTargetMinutes) * 100);
 
   if (elements.progressFill) {
     elements.progressFill.style.width = `${progressPercent}%`;
@@ -858,22 +875,14 @@ function updateTimerDisplay() {
     elements.progressPercent.textContent = `${Math.round(progressPercent)}%`;
   }
 
-  const diffMinutes = workedMinutes - targetMinutes;
   if (elements.remainingTime) {
     elements.remainingTime.classList.remove('overtime');
-    if (diffMinutes < 0) {
-      // Noch nicht am Soll
-      const remaining = Math.abs(diffMinutes);
-      let text = `noch ${formatMinutesSimple(remaining)} Std.`;
-      if (settings.breakMinutes > 0) {
-        text += ` (${formatMinutesSimple(remaining + settings.breakMinutes)} inkl. Pause)`;
-      }
-      elements.remainingTime.textContent = text;
-    } else if (diffMinutes === 0) {
-      elements.remainingTime.textContent = 'Soll erreicht!';
+    if (computation.balanceMinutes < 0) {
+      elements.remainingTime.textContent = `Noch ${OvertimeUtils.formatMinutesHHMM(Math.abs(computation.balanceMinutes))} zu arbeiten`;
+    } else if (computation.balanceMinutes === 0) {
+      elements.remainingTime.textContent = 'Sollzeit erreicht';
     } else {
-      // Überstunden!
-      elements.remainingTime.textContent = `+${formatMinutesSimple(diffMinutes)} Überstunden`;
+      elements.remainingTime.textContent = `${OvertimeUtils.formatMinutesHHMM(computation.balanceMinutes)} Überstunden`;
       elements.remainingTime.classList.add('overtime');
     }
   }
@@ -882,11 +891,7 @@ function updateTimerDisplay() {
 }
 
 function updatePauseDisplay() {
-  let totalPauseMs = timerState.totalPausedMs || 0;
-
-  if (timerState.isPaused && timerState.pauseStartTimestamp) {
-    totalPauseMs += Date.now() - timerState.pauseStartTimestamp;
-  }
+  const totalPauseMs = getTotalPauseMs(true);
 
   const pauseMinutes = Math.floor(totalPauseMs / 60000);
   const pauseSeconds = Math.floor((totalPauseMs % 60000) / 1000);
@@ -910,30 +915,30 @@ function updateEndTimeDisplay() {
   }
 
   const [hours, minutes] = (startTimeStr || '08:00').split(':').map(Number);
-  const startMinutes = (hours || 0) * 60 + (minutes || 0);
-  const endMinutes = startMinutes + (settings.targetMinutes || 480) + (settings.breakMinutes || 60);
-
-  const endHours = Math.floor(endMinutes / 60) % 24;
-  const endMins = endMinutes % 60;
+  const startDate = new Date();
+  startDate.setHours(hours || 0, minutes || 0, 0, 0);
+  const startTimestamp = startDate.getTime();
+  const manualBreakMinutes = timerState.startTimestamp ? Math.floor(getTotalPauseMs(true) / 60000) : 0;
+  const computation = OvertimeUtils.calculateLiveWorkBalance({
+    workStart: startTimestamp,
+    now: Date.now(),
+    dailyTargetMinutes: settings.targetMinutes || 0,
+    manualBreakMinutes
+  });
+  const expectedEndDate = new Date(computation.expectedEnd);
 
   if (elements.endTimeValue) {
-    elements.endTimeValue.textContent = formatTime(endHours, endMins);
+    elements.endTimeValue.textContent = formatTime(expectedEndDate.getHours(), expectedEndDate.getMinutes());
   }
 
-  // Update break time note
   if (elements.endTimeNote) {
-    const breakHours = Math.floor((settings.breakMinutes || 60) / 60);
-    const breakMins = (settings.breakMinutes || 60) % 60;
-    let breakText;
-
-    if (breakHours > 0 && breakMins > 0) {
-      breakText = `${breakHours} Std. ${breakMins} Min.`;
-    } else if (breakHours > 0) {
-      breakText = `${breakHours} Std.`;
-    } else {
-      breakText = `${breakMins} Min.`;
+    let note = computation.mandatoryBreakMinutes > 0
+      ? `(inkl. ${OvertimeUtils.formatMinutesHHMM(computation.mandatoryBreakMinutes)} Pflichtpause)`
+      : '(ohne Pflichtpause)';
+    if (computation.manualBreakMinutes > 0) {
+      note += ` + ${OvertimeUtils.formatMinutesHHMM(computation.manualBreakMinutes)} manuell`;
     }
-    elements.endTimeNote.textContent = `(inkl. ${breakText} Pause)`;
+    elements.endTimeNote.textContent = note;
   }
 }
 

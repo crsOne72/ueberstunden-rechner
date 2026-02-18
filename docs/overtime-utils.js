@@ -1,4 +1,7 @@
 (function initOvertimeUtils(globalScope) {
+  const MANDATORY_BREAK_THRESHOLD_MINUTES = 360;
+  const MANDATORY_BREAK_MINUTES = 30;
+
   function parseTimeToMinutes(timeString) {
     if (!timeString || typeof timeString !== 'string') return 0;
     const parts = timeString.split(':');
@@ -70,7 +73,55 @@
     return date.toLocaleDateString(locale, options);
   }
 
+  function minutesBetween(startTimestamp, endTimestamp) {
+    const start = Number(startTimestamp) || 0;
+    const end = Number(endTimestamp) || 0;
+    const diffMs = Math.max(0, end - start);
+    return Math.floor(diffMs / 60000);
+  }
+
+  function formatMinutesHHMM(totalMinutes) {
+    const minutes = Math.max(0, Math.floor(Number(totalMinutes) || 0));
+    const hoursPart = Math.floor(minutes / 60);
+    const minutesPart = minutes % 60;
+    return `${String(hoursPart).padStart(2, '0')}:${String(minutesPart).padStart(2, '0')}`;
+  }
+
+  function calculateLiveWorkBalance({
+    workStart,
+    now,
+    dailyTargetMinutes,
+    manualBreakMinutes = 0
+  }) {
+    const grossWorkedMinutes = minutesBetween(workStart, now);
+    const mandatoryBreakMinutes =
+      grossWorkedMinutes > MANDATORY_BREAK_THRESHOLD_MINUTES ? MANDATORY_BREAK_MINUTES : 0;
+    const normalizedManualBreakMinutes = Math.max(0, Math.floor(Number(manualBreakMinutes) || 0));
+    const normalizedTargetMinutes = Math.max(0, Math.floor(Number(dailyTargetMinutes) || 0));
+
+    const effectiveWorkedMinutes = Math.max(
+      0,
+      grossWorkedMinutes - mandatoryBreakMinutes - normalizedManualBreakMinutes
+    );
+    const balanceMinutes = effectiveWorkedMinutes - normalizedTargetMinutes;
+    const expectedEnd =
+      (Number(workStart) || 0) +
+      (normalizedTargetMinutes + mandatoryBreakMinutes + normalizedManualBreakMinutes) * 60000;
+
+    return {
+      grossWorkedMinutes,
+      mandatoryBreakMinutes,
+      manualBreakMinutes: normalizedManualBreakMinutes,
+      effectiveWorkedMinutes,
+      dailyTargetMinutes: normalizedTargetMinutes,
+      balanceMinutes,
+      expectedEnd
+    };
+  }
+
   globalScope.OvertimeUtils = {
+    MANDATORY_BREAK_THRESHOLD_MINUTES,
+    MANDATORY_BREAK_MINUTES,
     parseTimeToMinutes,
     calculateGrossMinutes,
     calculateBreakMinutes,
@@ -79,6 +130,9 @@
     formatDateKey,
     parseDateKey,
     addDaysToDateKey,
-    formatDateForDisplay
+    formatDateForDisplay,
+    minutesBetween,
+    formatMinutesHHMM,
+    calculateLiveWorkBalance
   };
 })(globalThis);

@@ -4,6 +4,7 @@
   "description": "Überstundenrechner - Work hours and overtime tracking app",
   "main": "www/app.js",
   "scripts": {
+    "test:utils": "node docs/overtime-utils.test.js",
     "sync": "npx cap sync",
     "build:ios": "npx cap sync ios",
     "build:android": "npx cap sync android",
