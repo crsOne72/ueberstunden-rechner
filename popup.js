@@ -524,7 +524,12 @@ function toggleTimer() {
 
 function onManualStartTimeChange() {
   if (!timerState.isRunning) {
+    if (elements.startTime && elements.manualStartTime) {
+      elements.startTime.value = elements.manualStartTime.value || '';
+    }
     updateEndTimeDisplay();
+    updateEntrySummary();
+    updateStoppedTimerDisplayFromEntry();
   }
 }
 
@@ -585,6 +590,7 @@ async function stopTimer() {
 
   updateTimerUI(false, false);
   stopTimerInterval();
+  updateStoppedTimerDisplayFromEntry();
   updateEntrySummary();
 
   if (elements.addEntry) {
@@ -592,6 +598,44 @@ async function stopTimer() {
   }
 
   await saveData();
+}
+
+function updateStoppedTimerDisplayFromEntry() {
+  const startTime = elements.startTime ? elements.startTime.value : '';
+  const endTime = elements.endTime ? elements.endTime.value : '';
+  const targetMinutes = Math.max(0, settings.targetMinutes || 0);
+
+  if (!startTime || !endTime) {
+    return;
+  }
+
+  const extraPauseMinutes = Math.floor((timerState.totalPausedMs || 0) / 60000);
+  const grossWorked = calculateGrossMinutes(startTime, endTime);
+  const breakMinutes = calculateBreakMinutes(grossWorked, extraPauseMinutes);
+  const worked = calculateWorkedMinutes(startTime, endTime, breakMinutes);
+  const diffMinutes = calculateDifference(worked);
+  const progressPercent = targetMinutes === 0 ? 100 : Math.min(100, (worked / targetMinutes) * 100);
+
+  if (elements.timerValue) {
+    elements.timerValue.textContent = OvertimeUtils.formatMinutesHHMM(worked);
+  }
+  if (elements.progressFill) {
+    elements.progressFill.style.width = `${progressPercent}%`;
+  }
+  if (elements.progressPercent) {
+    elements.progressPercent.textContent = `${Math.round(progressPercent)}%`;
+  }
+  if (elements.remainingTime) {
+    elements.remainingTime.classList.remove('overtime');
+    if (diffMinutes < 0) {
+      elements.remainingTime.textContent = `Noch ${OvertimeUtils.formatMinutesHHMM(Math.abs(diffMinutes))} zu arbeiten`;
+    } else if (diffMinutes === 0) {
+      elements.remainingTime.textContent = 'Sollzeit erreicht';
+    } else {
+      elements.remainingTime.textContent = `${OvertimeUtils.formatMinutesHHMM(diffMinutes)} Überstunden`;
+      elements.remainingTime.classList.add('overtime');
+    }
+  }
 }
 
 async function togglePause() {
