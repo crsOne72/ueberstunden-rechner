@@ -188,7 +188,7 @@ async function saveData() {
 }
 
 function setDefaultDate() {
-  const today = new Date().toISOString().split('T')[0];
+  const today = OvertimeUtils.formatDateKey(new Date());
   if (elements.entryDate) {
     elements.entryDate.value = today;
   }
@@ -291,16 +291,29 @@ function formatSeconds(totalSeconds) {
   return `${hours}:${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
 }
 
+function calculateGrossMinutes(startTime, endTime) {
+  return OvertimeUtils.calculateGrossMinutes(startTime, endTime);
+}
+
+function calculateBreakMinutes(grossWorkedMinutes, extraPauseMinutes = 0) {
+  return OvertimeUtils.calculateBreakMinutes(
+    grossWorkedMinutes,
+    settings.breakMinutes || 0,
+    extraPauseMinutes,
+    360
+  );
+}
+
 function calculateWorkedMinutes(startTime, endTime, breakMinutes) {
-  const start = parseTime(startTime);
-  const end = parseTime(endTime);
-  const breakMins = Number(breakMinutes) || 0;
-  const worked = end - start - breakMins;
-  return Math.max(0, worked);
+  return OvertimeUtils.calculateWorkedMinutes(startTime, endTime, breakMinutes);
 }
 
 function calculateDifference(workedMinutes) {
   return workedMinutes - settings.targetMinutes;
+}
+
+function isOvernightShift(startTime, endTime) {
+  return OvertimeUtils.isOvernightShift(startTime, endTime);
 }
 
 // Entry Management
@@ -314,9 +327,8 @@ async function handleAddEntry() {
   }
 
   const extraPauseMinutes = Math.floor((timerState.totalPausedMs || 0) / 60000);
-  const grossWorked = parseTime(endTime) - parseTime(startTime);
-  const scheduledBreak = grossWorked > 360 ? settings.breakMinutes : 0;
-  const breakMinutes = scheduledBreak + extraPauseMinutes;
+  const grossWorked = calculateGrossMinutes(startTime, endTime);
+  const breakMinutes = calculateBreakMinutes(grossWorked, extraPauseMinutes);
   const worked = calculateWorkedMinutes(startTime, endTime, breakMinutes);
   const diff = calculateDifference(worked);
 
@@ -341,7 +353,7 @@ async function handleAddEntry() {
     entries.unshift(entry);
   }
 
-  entries.sort((a, b) => new Date(b.date) - new Date(a.date));
+  entries.sort((a, b) => String(b.date).localeCompare(String(a.date)));
 
   await saveData();
   renderEntries();
@@ -349,10 +361,8 @@ async function handleAddEntry() {
   resetTimerState();
 
   // Move to next day
-  const nextDay = new Date(date);
-  nextDay.setDate(nextDay.getDate() + 1);
   if (elements.entryDate) {
-    elements.entryDate.value = nextDay.toISOString().split('T')[0];
+    elements.entryDate.value = OvertimeUtils.addDaysToDateKey(date, 1);
   }
 }
 
@@ -389,7 +399,7 @@ function renderEntries() {
       <div class="entry-item" data-id="${entry.id}">
         <div class="entry-info">
           <div class="entry-date">${formattedDate}</div>
-          <div class="entry-times">${entry.startTime} - ${entry.endTime}</div>
+          <div class="entry-times">${entry.startTime} - ${entry.endTime}${isOvernightShift(entry.startTime, entry.endTime) ? ' (+1 Tag)' : ''}</div>
         </div>
         <span class="entry-diff ${diffClass}">${formatMinutes(entry.diffMinutes)}</span>
         <button class="delete-btn" data-id="${entry.id}" title="Löschen">&times;</button>
@@ -410,14 +420,7 @@ function renderEntries() {
 }
 
 function formatDate(dateString) {
-  try {
-    const date = new Date(dateString);
-    if (isNaN(date.getTime())) return dateString;
-    const options = { weekday: 'short', day: '2-digit', month: '2-digit' };
-    return date.toLocaleDateString('de-DE', options);
-  } catch (e) {
-    return dateString;
-  }
+  return OvertimeUtils.formatDateForDisplay(dateString, 'de-DE');
 }
 
 function updateTotalBalance() {
@@ -526,7 +529,7 @@ async function startTimer() {
     elements.manualStartTime.value = startTimeStr;
   }
   if (elements.entryDate) {
-    elements.entryDate.value = now.toISOString().split('T')[0];
+    elements.entryDate.value = OvertimeUtils.formatDateKey(now);
   }
 
   updateEndTimeDisplay();
@@ -607,6 +610,7 @@ function resetTimerState() {
     elements.progressPercent.textContent = '0%';
   }
   if (elements.remainingTime) {
+    elements.remainingTime.classList.remove('overtime');
     let text = `noch ${formatMinutesSimple(settings.targetMinutes)} Std.`;
     if (settings.breakMinutes > 0) {
       text += ` (${formatMinutesSimple(settings.targetMinutes + settings.breakMinutes)} inkl. Pause)`;
@@ -745,8 +749,8 @@ function updateTimerDisplay() {
 
   // Update progress
   const workedMinutes = Math.floor(totalSeconds / 60);
-  const targetMinutes = settings.targetMinutes || 480;
-  const progressPercent = Math.min(100, (workedMinutes / targetMinutes) * 100);
+  const targetMinutes = Math.max(0, settings.targetMinutes || 0);
+  const progressPercent = targetMinutes === 0 ? 100 : Math.min(100, (workedMinutes / targetMinutes) * 100);
 
   if (elements.progressFill) {
     elements.progressFill.style.width = `${progressPercent}%`;
@@ -755,16 +759,22 @@ function updateTimerDisplay() {
     elements.progressPercent.textContent = `${Math.round(progressPercent)}%`;
   }
 
-  const remainingMinutes = Math.max(0, targetMinutes - workedMinutes);
   if (elements.remainingTime) {
-    if (remainingMinutes > 0) {
-      let text = `noch ${formatMinutesSimple(remainingMinutes)} Std.`;
+    const diffMinutes = workedMinutes - targetMinutes;
+    elements.remainingTime.classList.remove('overtime');
+
+    if (diffMinutes < 0) {
+      const remaining = Math.abs(diffMinutes);
+      let text = `noch ${formatMinutesSimple(remaining)} Std.`;
       if (settings.breakMinutes > 0) {
-        text += ` (${formatMinutesSimple(remainingMinutes + settings.breakMinutes)} inkl. Pause)`;
+        text += ` (${formatMinutesSimple(remaining + settings.breakMinutes)} inkl. Pause)`;
       }
       elements.remainingTime.textContent = text;
-    } else {
+    } else if (diffMinutes === 0) {
       elements.remainingTime.textContent = 'Soll erreicht!';
+    } else {
+      elements.remainingTime.textContent = `+${formatMinutesSimple(diffMinutes)} Überstunden`;
+      elements.remainingTime.classList.add('overtime');
     }
   }
 
@@ -844,14 +854,13 @@ function updateEntrySummary() {
   }
 
   const extraPauseMinutes = Math.floor((timerState.totalPausedMs || 0) / 60000);
-  const grossWorked = parseTime(endTime) - parseTime(startTime);
-  const scheduledBreak = grossWorked > 360 ? (settings.breakMinutes || 60) : 0;
-  const breakMinutes = scheduledBreak + extraPauseMinutes;
+  const grossWorked = calculateGrossMinutes(startTime, endTime);
+  const breakMinutes = calculateBreakMinutes(grossWorked, extraPauseMinutes);
   const worked = calculateWorkedMinutes(startTime, endTime, breakMinutes);
   const diff = calculateDifference(worked);
 
   if (elements.summaryDate) elements.summaryDate.textContent = formatDate(date);
-  if (elements.summaryTimes) elements.summaryTimes.textContent = `${startTime} - ${endTime}`;
+  if (elements.summaryTimes) elements.summaryTimes.textContent = `${startTime} - ${endTime}${isOvernightShift(startTime, endTime) ? ' (+1 Tag)' : ''}`;
   if (elements.summaryWorked) elements.summaryWorked.textContent = formatMinutesSimple(worked);
 
   if (elements.summaryDiff) {
